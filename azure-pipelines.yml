@@ -1,0 +1,47 @@
+# Azure DevOps Pipeline — Cambodia Website (React + Vite)
+#
+# Build-only pipeline (no deploy/verify stages — artifact repository: None)
+# Triggered on push to dev branch (GitFlow strategy).
+# Tech stack: Vite 5 + React 18 + MUI v5 + Node.js 22
+
+trigger:
+  branches:
+    include:
+      - dev
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+steps:
+  - task: NodeTool@0
+    displayName: 'Set up Node.js 22'
+    inputs:
+      versionSpec: '22.x'
+
+  - task: Cache@2
+    displayName: 'Cache node_modules'
+    inputs:
+      key: 'npm | "$(Agent.OS)" | package-lock.json'
+      path: 'node_modules'
+      cacheHitVar: 'CacheHit'
+
+  - script: npm ci
+    displayName: 'Install dependencies'
+    condition: ne(variables['CacheHit'], 'true')
+
+  - script: npm run build
+    displayName: 'Build project (Vite)'
+
+  - task: CopyFiles@2
+    displayName: 'Copy build output'
+    inputs:
+      SourceFolder: 'dist'
+      Contents: '**'
+      TargetFolder: '$(Build.ArtifactStagingDirectory)/dist'
+
+  - task: PublishBuildArtifacts@1
+    displayName: 'Publish build artifact'
+    inputs:
+      PathtoPublish: '$(Build.ArtifactStagingDirectory)/dist'
+      ArtifactName: 'dist'
+      publishLocation: 'Container'
